@@ -16,15 +16,29 @@ services:
       - ./db/init:/docker-entrypoint-initdb.d
       - ./db/dumps:/dumps
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+      - ./entrypoint.sh:/entrypoint.sh:ro
+    env_file: .env
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+
   summarize:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db]
+    depends_on: [db, ollama]
     container_name: summarize
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
       PORT: 3000
+      OLLAMA_API: ${OLLAMA_API}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
     expose:
       - "3000"
 
@@ -52,3 +66,4 @@ services:
 
 volumes:
   db_data:
+  ollama:
