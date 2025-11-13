@@ -95,7 +95,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
   frontend:
-    image: ghcr.io/${ORG}/${FRONTEND_REPO}:progressBar
+    image: ghcr.io/${ORG}/${FRONTEND_REPO}:${TAG:-latest}
     depends_on: [proxy]
     container_name: frontend
     restart: unless-stopped
