@@ -28,19 +28,49 @@ services:
     env_file: .env
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
 
+  redis:
+    image: redis:7
+    container_name: redis-local
+    ports: ["6379:6379"]
+
   summarize:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db, ollama]
+    depends_on: [db, ollama, redis]
     container_name: summarize
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
-      PORT: 3000
+      # DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      # PORT: 3000
       OLLAMA_API: ${OLLAMA_API}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
-    expose:
-      - "3000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    command: ["node","dist/src/main.js"]
+    ports: ["4001:4001"]
+    volumes:
+      - ./outputs:/app/outputs
+    # expose:
+    #   - "3000"
+
+  summary_worker:
+    image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
+    depends_on: [db, ollama, redis]
+    container_name: summary_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      # PORT: 3000
+      OLLAMA_API: ${OLLAMA_API}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    command: ["node","dist/src/worker/summarize.worker.js"]
+    volumes:
+      - ./outputs:/app/outputs
+    # expose:
+    #   - "3000"
 
   ontology:
     image: ghcr.io/${ORG}/${ONTO_REPO}:${TAG:-latest}
@@ -63,6 +93,16 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+  frontend:
+    image: ghcr.io/${ORG}/${FRONTEND_REPO}:${TAG:-latest}
+    depends_on: [proxy]
+    container_name: frontend
+    restart: unless-stopped
+    env_file: .env
+    command: ["npm", "start"]
+    ports:
+      - "8080:8080"
 
 volumes:
   db_data:
