@@ -83,6 +83,23 @@ services:
       PORT: 3000
     expose:
       - "3000"
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 4000
+    ports:
+      - "4005:4000"   # external:internal
+    networks:
+      - default
 
   proxy:
     image: nginx:alpine
@@ -94,15 +111,15 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
-  frontend:
-    image: ghcr.io/${ORG}/${FRONTEND_REPO}:${TAG:-latest}
-    depends_on: [proxy]
-    container_name: frontend
-    restart: unless-stopped
-    env_file: .env
-    command: ["npm", "start"]
-    ports:
-      - "8080:8080"
+  # frontend:
+  #   image: ghcr.io/${ORG}/${FRONTEND_REPO}:${TAG:-latest}
+  #   depends_on: [proxy]
+  #   container_name: frontend
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   command: ["npm", "start"]
+  #   ports:
+  #     - "8080:8080"
 
 volumes:
   db_data:
