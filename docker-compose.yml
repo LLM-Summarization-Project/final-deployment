@@ -79,10 +79,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      # DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
       PORT: 3000
-    expose:
-      - "3000"
+    ports: ["3000:3000"]
   auth-service:
     image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
     container_name: auth-service
