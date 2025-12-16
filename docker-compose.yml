@@ -83,19 +83,19 @@ services:
       PORT: 3000
     expose:
       - "3000"
-auth-service:
-  image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
-  container_name: auth-service
-  restart: unless-stopped
-  depends_on:
-    - db
-  env_file: .env
-  environment:
-    DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
-    JWT_SECRET: ${JWT_SECRET}
-    PORT: 4000
-  ports:
-    - "4005:4000"
+  auth-service:
+    image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
+    container_name: auth-service
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file: .env
+    environment:
+      # DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 4000
+    ports:
+      - "4005:4000"
 
 
   proxy:
