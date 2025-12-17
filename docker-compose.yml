@@ -95,7 +95,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      DATABASE_URL: ${DATABASE_URL}
       HYPERTEXT_API_URL: http://hypertext-backend:3002
       PORT: 3000
     ports:
