@@ -84,8 +84,8 @@ services:
       OLLAMA_API: ${OLLAMA_API}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       PORT: 3002
-    expose:
-      - "3002"
+    ports:
+      - "3002:3002"
 
   ontology:
     image: ghcr.io/${ORG}/${ONTO_REPO}:${TAG:-latest}
