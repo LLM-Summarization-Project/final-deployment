@@ -72,17 +72,34 @@ services:
     # expose:
     #   - "3000"
 
+  # Hypertext Backend (LLM processing service)
+  hypertext-backend:
+    image: ghcr.io/${ORG}/${HYPERTEXT_REPO:-hypertext_backend}:${TAG:-latest}
+    depends_on: [db, ollama]
+    container_name: hypertext-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      OLLAMA_API: ${OLLAMA_API}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      PORT: 3002
+    expose:
+      - "3002"
+
   ontology:
     image: ghcr.io/${ORG}/${ONTO_REPO}:${TAG:-latest}
-    depends_on: [db]
+    # depends_on: [db]
+    depends_on: [db, hypertext-backend]
     container_name: ontology
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      HYPERTEXT_API_URL: http://hypertext-backend:3002
       PORT: 3000
-    expose:
-      - "3000"
+    ports:
+      - "3001:3000"
   auth-service:
       image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
       container_name: auth-service
@@ -97,15 +114,15 @@ services:
         - "4005:4000"
 
 
-  proxy:
-      image: nginx:alpine
-      container_name: proxy
-      depends_on: [summarize, ontology]
-      restart: unless-stopped
-      ports:
-        - "80:80"
-      volumes:
-        - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  # proxy:
+  #     image: nginx:alpine
+  #     container_name: proxy
+  #     depends_on: [summarize, ontology]
+  #     restart: unless-stopped
+  #     ports:
+  #       - "80:80"
+  #     volumes:
+  #       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
   # frontend:
   #   image: ghcr.io/${ORG}/${FRONTEND_REPO}:${TAG:-latest}
