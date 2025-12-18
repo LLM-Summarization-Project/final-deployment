@@ -80,7 +80,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+      DATABASE_URL: ${DATABASE_URL}
       OLLAMA_API: ${OLLAMA_API}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       PORT: 3002
@@ -107,7 +107,7 @@ services:
       depends_on:
         - db
       environment:
-        DATABASE_URL: postgres://${DB_USER:-app}:${DB_PASS:-app}@db:5432/${DB_NAME:-app}
+        DATABASE_URL: ${DATABASE_URL}
         JWT_SECRET: ${JWT_SECRET}
         PORT: 4000
       ports:
