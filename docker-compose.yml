@@ -98,7 +98,7 @@ services:
       HYPERTEXT_API_URL: http://hypertext-backend:3002
       PORT: 3000
     ports:
-      - "3000:3000"
+      - "3001:3000"
   auth-service:
       image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
       container_name: auth-service
