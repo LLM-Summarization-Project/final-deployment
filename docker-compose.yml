@@ -27,6 +27,13 @@ services:
       - ./entrypoint.sh:/entrypoint.sh:ro
     env_file: .env
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all        # หรือระบุจำนวน GPU เช่น 1
+              capabilities: [gpu]
 
   redis:
     image: redis:7
@@ -34,7 +41,7 @@ services:
 
   summarize:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db, ollama, redis]
+    depends_on: [db, redis]
     container_name: summarize
     restart: unless-stopped
     env_file: .env
@@ -54,7 +61,7 @@ services:
 
   summary_worker:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db, ollama, redis]
+    depends_on: [db, redis]
     container_name: summary_worker
     restart: unless-stopped
     env_file: .env
@@ -74,7 +81,7 @@ services:
   # Hypertext Backend (LLM processing service)
   hypertext-backend:
     image: ghcr.io/${ORG}/${HYPERTEXT_REPO:-hypertext_backend}:${TAG:-latest}
-    depends_on: [db, ollama]
+    depends_on: [db]
     container_name: hypertext-backend
     restart: unless-stopped
     env_file: .env
