@@ -75,6 +75,7 @@ services:
     command: ["node","dist/src/worker/index.js"]
     volumes:
       - ./outputs:/app/outputs
+      - whisper_cache:/root/.cache/whisper
     # expose:
     #   - "3000"
 
@@ -144,3 +145,4 @@ services:
 volumes:
   db_data:
   ollama:
+  whisper_cache:
