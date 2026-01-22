@@ -1,39 +1,32 @@
 version: "3.9"
 
 services:
-  db:
-    image: postgres:16
-    container_name: db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-app}
-      POSTGRES_PASSWORD: ${DB_PASS:-app}
-      POSTGRES_DB: ${DB_NAME:-app}
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d
-      - ./db/dumps:/dumps
+  # db:
+  #   image: postgres:16
+  #   container_name: db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${DB_USER:-app}
+  #     POSTGRES_PASSWORD: ${DB_PASS:-app}
+  #     POSTGRES_DB: ${DB_NAME:-app}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - db_data:/var/lib/postgresql/data
+  #     - ./db/init:/docker-entrypoint-initdb.d
+  #     - ./db/dumps:/dumps
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-      - ./entrypoint.sh:/entrypoint.sh:ro
-    env_file: .env
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all        # หรือระบุจำนวน GPU เช่น 1
-              capabilities: [gpu]
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama:/root/.ollama
+  #     - ./entrypoint.sh:/entrypoint.sh:ro
+  #   env_file: .env
+  #   entrypoint: ["/bin/sh", "/entrypoint.sh"]
 
   redis:
     image: redis:7
@@ -41,7 +34,7 @@ services:
 
   summarize:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db, redis]
+    depends_on: [redis, ontology]
     container_name: summarize
     restart: unless-stopped
     env_file: .env
@@ -52,16 +45,18 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      ONTOLOGY_SERVICE: http://ontology:3001
     command: ["node","dist/src/main.js"]
     ports: ["8081:8081"]
     volumes:
       - ./outputs:/app/outputs
+      - ./.env:/app/.env:ro
     # expose:
     #   - "3000"
 
   summary_worker:
     image: ghcr.io/${ORG}/${SUMMARIZE_REPO}:${TAG:-latest}
-    depends_on: [db, redis]
+    depends_on: [redis, ontology]
     container_name: summary_worker
     restart: unless-stopped
     env_file: .env
@@ -72,9 +67,11 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      ONTOLOGY_SERVICE: http://ontology:3001
     command: ["node","dist/src/worker/index.js"]
     volumes:
       - ./outputs:/app/outputs
+      - ./.env:/app/.env:ro
       - whisper_cache:/root/.cache/whisper
     # expose:
     #   - "3000"
@@ -82,7 +79,7 @@ services:
   # Hypertext Backend (LLM processing service)
   hypertext-backend:
     image: ghcr.io/${ORG}/${HYPERTEXT_REPO:-hypertext_backend}:${TAG:-latest}
-    depends_on: [db]
+    depends_on: [redis]
     container_name: hypertext-backend
     restart: unless-stopped
     env_file: .env
@@ -91,28 +88,30 @@ services:
       OLLAMA_API: ${OLLAMA_API}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
       PORT: 3002
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     ports:
       - "3002:3002"
 
   ontology:
     image: ghcr.io/${ORG}/${ONTO_REPO}:${TAG:-latest}
     # depends_on: [db]
-    depends_on: [db, hypertext-backend]
+    depends_on: [hypertext-backend]
     container_name: ontology
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL}
       HYPERTEXT_API_URL: http://hypertext-backend:3002
-      PORT: 3000
+      PORT: 3001
     ports:
-      - "3000:3000"
+      - "3001:3001"
   auth-service:
       image: ghcr.io/${ORG}/${AUTH_REPO}:${TAG:-latest}
       container_name: auth-service
       restart: unless-stopped
       depends_on:
-        - db
+        - redis
       environment:
         DATABASE_URL: ${DATABASE_URL}
         JWT_SECRET: ${JWT_SECRET}
