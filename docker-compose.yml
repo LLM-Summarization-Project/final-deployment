@@ -72,6 +72,7 @@ services:
     volumes:
       - ./outputs:/app/outputs
       - ./.env:/app/.env:ro
+      - whisper_cache:/root/.cache/whisper
     # expose:
     #   - "3000"
 
@@ -143,3 +144,4 @@ services:
 volumes:
   db_data:
   ollama:
+  whisper_cache:
