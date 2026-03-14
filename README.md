@@ -629,8 +629,8 @@ All services share the same **PostgreSQL database** (NeonDB). The shared schema 
 # Generate Prisma client
 npx prisma generate
 
-# Push schema to database (development)
-npx prisma db push
+# Pull schema from database (development)
+npx prisma db pull
 
 # Open Prisma Studio (GUI)
 npx prisma studio
@@ -713,82 +713,116 @@ All 4 backend services have Swagger integrated. Access the interactive API docs 
 
 ### Prerequisites
 
-- **Node.js 20+**
-- **npm** or **pnpm**
 - **Docker** and **Docker Compose**
-- **PostgreSQL** (or NeonDB account)
-- **Redis** (local or Docker)
 - **Ollama** with `llama3:8b` model pulled
-- **Python 3.10+** (for summarize worker ML pipeline)
+- A **PostgreSQL** database (or NeonDB account)
 
 ### Quick Start (Local Development)
 
-**1. Start Infrastructure**
+All services are pre-built as Docker images and hosted on **GitHub Container Registry (GHCR)**. The `docker-compose.yml` in `final-deployment/` pulls these images automatically — no need to clone or build individual repositories.
+
+**1. Configure Environment**
 
 ```bash
-# Start Redis
-docker run -d --name redis -p 6379:6379 redis:7
+cd final-deployment
 
-# Start Ollama and pull model
+# Copy the example env and fill in your values
+cp .env.example .env
+```
+
+Edit `.env` with your actual configuration:
+
+```env
+# Required: your PostgreSQL connection string
+DATABASE_URL="postgresql://user:pass@host:5432/dbname"
+
+# Required: Ollama endpoint (use host machine IP if Ollama runs outside Docker)
+OLLAMA_API=http://host.docker.internal:11434/api/generate
+OLLAMA_MODEL=llama3:8b
+
+# Required: JWT secret for auth
+JWT_SECRET=supersecretjwt
+```
+
+**2. Start Ollama (on host machine)**
+
+```bash
 ollama serve
 ollama pull llama3:8b
 ```
 
-**2. Setup Database**
-
-```bash
-# Each service needs Prisma client generated
-cd Auth-Service && pnpm install && pnpm exec prisma generate && cd ..
-cd summarize_backend && npm install && npx prisma generate && cd ..
-cd hypertext_backend && npm install && npx prisma generate && cd ..
-cd hypertext-onto-backend && npm install && npx prisma generate && cd ..
-```
-
-**3. Start Services** (each in a separate terminal)
-
-```bash
-# Terminal 1: Auth Service
-cd Auth-Service && pnpm run start:dev
-
-# Terminal 2: Hypertext Backend
-cd hypertext_backend && npm run start:dev
-
-# Terminal 3: Ontology Service
-cd hypertext-onto-backend && npm run start:dev
-
-# Terminal 4: Summarize Backend
-cd summarize_backend && npm run start:dev
-
-# Terminal 5: Frontend
-cd tmpfin && npm run dev
-```
-
-**4. Access the Application**
-
-- **Frontend**: http://localhost:8080
-- **Auth Swagger**: http://localhost:4005/swagger
-- **Summary Swagger**: http://localhost:8081/swagger
-- **Hypertext Swagger**: http://localhost:3002/swagger
-- **Ontology Swagger**: http://localhost:3001/swagger
-
-### Quick Start (Docker Compose)
+**3. Pull and Start All Services**
 
 ```bash
 cd final-deployment
-cp .env.example .env
-# Edit .env with your database URL and other secrets
+
+# Pull latest images from GHCR
+docker compose pull
+
+# Start all services in background
 docker compose up -d
+```
+
+This single command starts all services:
+
+| Service             | Container          | Port  |
+|---------------------|--------------------|-------|
+| Redis               | `redis`            | 6379  |
+| Auth Service        | `auth-service`     | 4005  |
+| Hypertext Backend   | `hypertext-backend`| 3002  |
+| Ontology Service    | `ontology`         | 3001  |
+| Summarize API       | `summarize`        | 8081  |
+| Summarize Worker    | `summary_worker`   | —     |
+
+**4. Verify Services**
+
+```bash
+# Check all containers are running
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# View logs for a specific service
+docker compose logs -f summarize
+```
+
+**5. Access the Application**
+
+| Service                | URL                                  |
+|------------------------|--------------------------------------|
+| Auth Swagger           | http://localhost:4005/swagger         |
+| Summarize Swagger      | http://localhost:8081/swagger         |
+| Hypertext Swagger      | http://localhost:3002/swagger         |
+| Ontology Swagger       | http://localhost:3001/swagger         |
+
+**6. Stop All Services**
+
+```bash
+docker compose down
 ```
 
 ---
 
-### Docker Build (Individual Service)
+### Source Code Development (Optional)
+
+If you need to modify source code and run services locally without Docker:
 
 ```bash
-# Build any service
-docker build -t auth-service ./Auth-Service
-docker build -t hypertext-backend ./hypertext_backend
-docker build -t hypertext-onto-backend ./hypertext-onto-backend
-docker build -t summarize-backend ./summarize_backend
-docker build -t frontend ./tmpfin
+# Auth Service
+cd Auth-Service && pnpm install && pnpm exec prisma generate && pnpm run start:dev
+
+# Hypertext Backend
+cd hypertext_backend && npm install && npx prisma generate && npm run start:dev
+
+# Ontology Service
+cd hypertext-onto-backend && npm install && npx prisma generate && npm run start:dev
+
+# Summarize Backend
+cd summarize_backend && npm install && npx prisma generate && npm run start:dev
+
+# Frontend
+cd tmpfin && npm install && npm run dev
 ```
+
+> **Note**: Running from source requires Node.js 20+, npm/pnpm, Redis, and Python 3.10+ (for the summarize worker's ML pipeline).
